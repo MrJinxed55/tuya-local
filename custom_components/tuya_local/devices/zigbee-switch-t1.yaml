@@ -1,0 +1,166 @@
+name: ZigBee Switch (T1)
+products:
+  - id: skueekg3
+    name: ZigBee Switch (T1)
+    model: YBSW001
+entities:
+  # Main relay
+  - entity: switch
+    translation_key: switch_x
+    translation_placeholders:
+      x: "1"
+    dps:
+      - id: 1
+        name: switch
+        type: boolean
+
+  # Countdown (seconds)
+  - entity: number
+    name: Countdown 1
+    category: config
+    class: duration
+    icon: "mdi:timer"
+    dps:
+      - id: 7
+        name: value
+        type: integer
+        unit: s
+        range:
+          min: 0
+          max: 43200
+
+  # Power-on behavior / relay restore
+  - entity: select
+    name: Relay status
+    category: config
+    icon: "mdi:power-settings"
+    dps:
+      - id: 14
+        name: option
+        type: string
+        mapping:
+          - dps_val: "off"
+            value: "off"
+          - dps_val: "on"
+            value: "on"
+          - dps_val: "memory"
+            value: "memory"
+
+  # Switch input mode
+  - entity: select
+    name: Switch type
+    category: config
+    icon: "mdi:gesture-tap-button"
+    dps:
+      - id: 47
+        name: option
+        type: string
+        mapping:
+          - dps_val: "flip"
+            value: "flip"
+          - dps_val: "sync"
+            value: "sync"
+          - dps_val: "button"
+            value: "button"
+
+  # DP 19: Iching configuration
+  - entity: switch
+    name: Inching enabled
+    category: config
+    dps:
+      - id: 19
+        type: base64
+        name: switch
+        mask: FF0000
+        mapping:
+          - dps_val: 0
+            value: false
+          - dps_val: 1
+            value: true
+  
+  - entity: number
+    name: Inching duration
+    category: config
+    class: duration
+    icon: "mdi:timer"
+    dps:
+      - id: 19
+        type: base64
+        name: value
+        mask: 00FFFF
+        unit: s
+        range:
+          min: 0
+          max: 43200
+
+  # DP209 (cycle_timing) is a base64-encoded schedule payload (1-gang switch).
+  #
+  # Observed format:
+  # - Payload begins with a 2-byte big-endian header: 0x000A
+  #   This equals the record size (10 bytes).
+  # - Followed by N records, each exactly 10 bytes:
+  #     [enabled, weekday_mask, on_hi, on_lo, off_hi, off_lo,
+  #      start_dur_hi, start_dur_lo, end_dur_hi, end_dur_lo]
+  #
+  # - Times are minutes since midnight, big-endian.
+  #   Example: 12:00 -> 720 -> 0x02D0
+  # - Durations are minutes, big-endian.
+  #   Example: 01:00 -> 60 -> 0x003C
+  #
+  # weekday_mask is a bitfield: Sun=bit0 ... Sat=bit6
+  #   Example: Sun+Tue+Thu+Sat = 0x55
+  #            Mon+Wed+Fri      = 0x2A
+  #
+  # enabled (1 byte):
+  #   0x01 = schedule enabled
+  #   0x00 = schedule disabled
+  #
+  # Examples:
+  #   Disabled, Sun+Tue+Thu+Sat 12:00-20:30 start 01:00 end 00:30:
+  #     AAoAVQLQBM4APAAe
+  #
+  #   Enabled, Sun+Tue+Thu+Sat 12:00-20:30 start 01:00 end 00:30:
+  #     AAoBVQLQBM4APAAe
+  #
+  #   Enabled, two records:
+  #     (1) Sun+Tue+Thu+Sat 12:00-20:30 start 01:00 end 00:30
+  #     (2) Mon+Wed+Fri      10:00-16:30 start 00:30 end 01:00
+  #     AAoBVQLQBM4APAAeASoCWAPeAB4APA==
+  - entity: text
+    name: Cycle timing
+    category: config
+    dps:
+      - id: 209
+        name: value
+        type: string
+        optional: true
+
+  # DP210 (random_timing) is a base64-encoded schedule payload (1-gang switch).
+  #
+  # Observed format:
+  # - Payload begins with a 2-byte big-endian header: 0x0006
+  #   This equals the record size (6 bytes).
+  # - Followed by N records, each exactly 6 bytes:
+  #     [enabled, weekday_mask, on_hi, on_lo, off_hi, off_lo]
+  #
+  # - Times are minutes since midnight, big-endian.
+  #   Example: 12:00 -> 720 -> 0x02D0
+  #
+  # weekday_mask is a bitfield: Sun=bit0 ... Sat=bit6
+  #   Example: Sun+Tue+Thu+Sat = 0x55
+  #
+  # enabled (1 byte):
+  #   0x01 = schedule enabled
+  #   0x00 = schedule disabled
+  #
+  # Example (1 record):
+  #   Enabled, Sun+Tue+Thu+Sat 12:00-20:30:
+  #     AAYBVQLQBM4=
+  - entity: text
+    name: Random timing
+    category: config
+    dps:
+      - id: 210
+        name: value
+        type: string
+        optional: true
